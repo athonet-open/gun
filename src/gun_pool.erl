@@ -409,7 +409,9 @@ get_pool(Authority0, ReqOpts) ->
 
 start_missing_pool({Host, Port}, Opts) ->
 	case start_pool(Host, Port, Opts) of
-		{error, {error, {pool_exists, ManagerPid}}} ->
+		{error, normal} ->
+			PoolKey = gun_pools_key(Host, Port, Opts),
+			[{_, ManagerPid}] = ets:lookup(gun_pools, PoolKey),
 			ManagerPid;
 		{ok, ManagerPid} ->
 			ManagerPid
@@ -531,8 +533,7 @@ init({Host, Port, Opts}) ->
 	PoolKey = gun_pools_key(Host, Port, Opts),
 	case ets:insert_new(gun_pools, {PoolKey, self()}) of
 	false ->
-		[{_,ManagerPid}] = ets:lookup(gun_pools, PoolKey),
-		{stop, {error, {pool_exists, ManagerPid}}};
+		{stop, normal};
 	true ->
 		Tid = ets:new(gun_pooled_conns, [ordered_set, public]),
 		Size = maps:get(size, Opts, 8),
